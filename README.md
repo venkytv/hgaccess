@@ -9,7 +9,13 @@ Setup
    repositories has access to execute this script.
 2. Create a `hgaccess.conf` file in the SSH user's home directory containing the
    mapping of user roles to repositories.  Use the included
-   [hgaccess.conf.SAMPLE](hgaccess.conf.SAMPLE) file as a sample.
+   [hgaccess.conf.SAMPLE](hgaccess.conf.SAMPLE) file as a sample.  The repo
+   names listed in the file (in the "read" and "write" entries) are the paths
+   relative to the home directory of the repo serving SSH user.  For instance,
+   if the repo is in the home directory and has a name "foo", the entries in
+   `hgaccess.conf` referring to the repo will just use the name "foo".  If the
+   repo is in a directory `~/repos/foo`, the repo name in `hgaccess.conf` will
+   be "repos/foo".
 3. Create a `hgadmin.list` file in the same directory containing the list of
    users who are allowed access to the admin interface.  Use the included
    [hgadmin.list.SAMPLE](hgadmin.list.SAMPLE) file as an example.
