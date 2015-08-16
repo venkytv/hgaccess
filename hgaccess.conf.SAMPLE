@@ -1,0 +1,19 @@
+[eng]
+read = __ALL__
+write = __ALL_EXCEPT__ tools
+
+[tools]
+read = tools
+write = tools
+
+[test]
+read = __ALL__
+write = testscripts, unittests
+
+[bot]
+read = __ALL_EXCEPT__ testscripts, unittests
+write = 
+
+[mgr]
+read = docs
+write = docs
