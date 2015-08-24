@@ -11,6 +11,7 @@ my $DEBUG = 0;
 my $SKIP_BACKUP = 0;
 
 my $AUTHKEYSFILE = File::Spec->catfile($ENV{HOME}, '.ssh', 'authorized_keys');
+my $ADMINLIST = 'hgadmin.list';
 my $NOADMINFILE = 0;
 
 # Subroutines
@@ -29,7 +30,7 @@ sub debug {
 }
 
 sub load_admins {
-    my $file = File::Spec->catfile($ENV{HOME}, 'hgadmin.list');
+    my $file = File::Spec->catfile($ENV{HOME}, $ADMINLIST);
     my %admins;
     if (open(my $fh, $file)) {
         while (<$fh>) {
@@ -109,8 +110,14 @@ sub is_valid_role {
 }
 
 my $__admins;
+my $__warnonce;
 sub is_admin_user {
-    return 1 if $NOADMINFILE;
+    if ($NOADMINFILE) {
+        print STDERR "WARNING!!! $ADMINLIST not found. Treating all users as admins.\n"
+            unless $__warnonce;
+        $__warnonce = 1;
+        return 1;
+    }
     my $user = shift;
     $__admins = load_admins unless $__admins;
     return exists $__admins->{$user};
@@ -547,14 +554,14 @@ if ($ENV{SSH_ORIGINAL_COMMAND}) {
         print STDERR $msg, "\n" if $msg;
         exec @$run;
     } else {
-        my $is_admin = exists $admins->{$user};
+        my $is_admin = is_admin_user($user);
         debug('admin: ', ($is_admin ? 'yes' : 'no'));
         abort "Access denied, non-admin user: $user" unless $is_admin;
         admin_command($ENV{SSH_ORIGINAL_COMMAND});
     }
 }
 
-my $is_admin = exists $admins->{$user};
+my $is_admin = is_admin_user($user);
 debug('admin: ', ($is_admin ? 'yes' : 'no'));
 
 if ($is_admin) {
