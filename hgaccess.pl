@@ -11,6 +11,7 @@ my $DEBUG = 0;
 my $SKIP_BACKUP = 0;
 
 my $AUTHKEYSFILE = File::Spec->catfile($ENV{HOME}, '.ssh', 'authorized_keys');
+my $NOADMINFILE = 0;
 
 # Subroutines
 
@@ -39,6 +40,8 @@ sub load_admins {
             $admins{$_} = 1;
         }
         close $fh;
+    } else {
+        $NOADMINFILE = 1;
     }
     return \%admins;
 }
@@ -107,6 +110,7 @@ sub is_valid_role {
 
 my $__admins;
 sub is_admin_user {
+    return 1 if $NOADMINFILE;
     my $user = shift;
     $__admins = load_admins unless $__admins;
     return exists $__admins->{$user};
