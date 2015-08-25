@@ -23,7 +23,7 @@ Setup
 Adding Users
 ============
 
-The first user seems to be set up by hand.  Add an entry similar to the
+The first user needs to be set up by hand.  Add an entry similar to the
 following to the SSH user's `.ssh/authorized_keys` file:
 
     command="/home/hg/bin/hgaccess.pl admin:eng",no-port-forwarding,no-x11-forwarding,no-agent-forwarding ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABA3XOS9JwRu+r5hVjn9aFSCriU0bsji5HKYr1Oy2CILOqSdn3B4tD9WhfvYHoyAesZ7/qRM29jhU90assZWund1+OunZ7jwFXznNRt2BscnIWyx9u3Zl36ePh1njufNwssTxTnZ1kGLXKImHu78mmOb5C6XYLEhaQoP1B1z0M7ElR+OfHZVlWAuI9L+YUcq6y2V4WSoGFmN6dmNRmCsPNFC90ognZf/xMDMg9cmH5gNLsieSCDXYt+6Z admin@example.com
