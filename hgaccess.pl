@@ -2,6 +2,7 @@
 use strict;
 use warnings;
 
+use File::Basename;
 use File::Copy;
 use File::Spec;
 use File::Temp qw( tempfile );
@@ -13,6 +14,8 @@ my $SKIP_BACKUP = 0;
 my $AUTHKEYSFILE = File::Spec->catfile($ENV{HOME}, '.ssh', 'authorized_keys');
 my $ADMINLIST = 'hgadmin.list';
 my $NOADMINFILE = 0;
+
+my $SCRIPTNAME = basename $0;
 
 # Subroutines
 
@@ -309,7 +312,12 @@ sub users_and_roles {
     open(my $fh, $AUTHKEYSFILE) or die "Failed to open file: $AUTHKEYSFILE";
     while (<$fh>) {
         next unless /^\s*command="(.*?)"/;
-        my $user_role = (split(' ', $1))[1];
+        my $command = $1;
+        unless ($command =~ /\Q$SCRIPTNAME\E/) {
+            debug "Ignoring line: $_";
+            next;
+        }
+        my $user_role = (split(' ', $command))[1];
         debug "Got user:role = $user_role";
         my ($user, $role) = split(':', $user_role);
         $users{$user} = [] unless exists $users{$user};
