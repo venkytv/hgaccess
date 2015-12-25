@@ -81,3 +81,16 @@ Admin Commands
     
     NOTE: If no command is specified, the admin user is dropped into a shell.
 
+Logging and Debugging
+=====================
+
+Logging of actions (like locking/unlocking a gate or launching an admin shell)
+can be enabled by creating an empty file named `.hgactions.log` in the home
+directory of the user hosting this script.
+
+	touch $HOME/.hgactions.log
+
+Debug logs can be enabled by creating a file named `.hgaccess.debug.log` in the
+home directory.
+
+	touch $HOME/.hgaccess.debug.log

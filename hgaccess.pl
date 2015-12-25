@@ -8,14 +8,18 @@ use File::Spec;
 use File::Temp qw( tempfile );
 use POSIX qw( strftime );
 
-my $DEBUG = 0;
 my $SKIP_BACKUP = 0;
 
 my $AUTHKEYSFILE = File::Spec->catfile($ENV{HOME}, '.ssh', 'authorized_keys');
 my $ADMINLIST = 'hgadmin.list';
 my $NOADMINFILE = 0;
 
+my $ADMINUSER = '';
+
 my $SCRIPTNAME = basename $0;
+
+my $DEBUGLOG = File::Spec->catfile($ENV{HOME}, '.hgaccess.debug.log');
+my $ACTIONLOG = File::Spec->catfile($ENV{HOME}, '.hgactions.log');
 
 # Subroutines
 
@@ -28,8 +32,23 @@ sub abort {
 }
 
 sub debug {
-    return unless $DEBUG;
-    print STDERR "[DEBUG] ", @_, "\n";
+    return unless -f $DEBUGLOG;
+    if (open(my $fh, '>>', $DEBUGLOG)) {
+        my $timestamp = strftime("%Y-%m-%d-%H%M%S", localtime);
+        print $fh "[DEBUG] $timestamp ", @_, "\n";
+        close $fh;
+    }
+}
+
+sub log_action {
+    return unless -f $ACTIONLOG;
+    if (open (my $fh, '>>', $ACTIONLOG)) {
+        my ($action, $gate, $details) = @_;
+        $gate ||= ''; $details ||= '';
+        my $timestamp = strftime("%Y-%m-%d-%H%M%S", localtime);
+        print $fh "$timestamp\t$action\t$gate\t$ADMINUSER\t$details\n";
+        close $fh;
+    }
 }
 
 sub load_admins {
@@ -249,6 +268,7 @@ sub lock_gate {
 
     my $lockdir = lock_dir $repo;
     mkdir $lockdir or abort "Failed to create directory: $lockdir: $!";
+    log_action('LOCK', $repo);
 }
 
 sub unlock_gate {
@@ -265,6 +285,7 @@ sub unlock_gate {
     my $lockdir = lock_dir $repo;
     debug "Unlocking gate: $repo";
     rmdir $lockdir or abort "Failed to remove directory: $lockdir";
+    log_action('UNLOCK', $repo);
 }
 
 sub open_gate {
@@ -286,6 +307,7 @@ sub open_gate {
         unless (-e $openfile) {
             open(my $fh, '>', $openfile) or die "Failed to create file: $openfile";
             close $fh;
+            log_action('OPEN', $repo, $user);
         }
     }
 }
@@ -304,6 +326,7 @@ sub close_gate {
             abort "Unable to close gate for user: $user\nNot an empty file: $openfile"
         }
         unlink $openfile;
+        log_action('CLOSE', $repo, $user);
     }
 }
 
@@ -386,6 +409,8 @@ sub add_user {
     open(my $authfh, '>>', $AUTHKEYSFILE) or abort "Unable to open file: $AUTHKEYSFILE";
     print $authfh "command=\"$0 $user:$roles\",no-port-forwarding,no-x11-forwarding,no-agent-forwarding $key\n";
     close $authfh;
+
+    log_action('ADD', '', "$user:$roles");
 
     print <<ADDUSER;
 
@@ -565,6 +590,7 @@ if ($ENV{SSH_ORIGINAL_COMMAND}) {
         my $is_admin = is_admin_user($user);
         debug('admin: ', ($is_admin ? 'yes' : 'no'));
         abort "Access denied, non-admin user: $user" unless $is_admin;
+        $ADMINUSER = $user;
         admin_command($ENV{SSH_ORIGINAL_COMMAND});
     }
 }
@@ -573,6 +599,8 @@ my $is_admin = is_admin_user($user);
 debug('admin: ', ($is_admin ? 'yes' : 'no'));
 
 if ($is_admin) {
+    $ADMINUSER = $user;
+    log_action('SHELL');
     print "(Launching shell for admin user $user)\n";
     exec "/bin/bash";
 } else {
