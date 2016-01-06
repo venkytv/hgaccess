@@ -602,6 +602,7 @@ if ($is_admin) {
     $ADMINUSER = $user;
     log_action('SHELL');
     print "(Launching shell for admin user $user)\n";
+    $ENV{HGADMIN} = $user;
     exec "/bin/bash";
 } else {
     print STDERR "Logins not allowed for user $user\n";
