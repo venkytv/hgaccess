@@ -290,21 +290,14 @@ sub unlock_gate {
 
 sub open_gate {
     my $repo = shift;
-    my %users = map { $_ => 1 } @_;
-    abort "Usage: open <gate> <user> [<user>...]" unless $repo and %users;
+    abort "Usage: open <gate> <user> [<user>...]" unless $repo and @_;
     abort "Gate not locked: $repo" unless is_locked $repo;
 
-    my %known_users = users_and_roles();
-    my @unknown_users;
-    foreach my $user (sort keys %users) {
-        push(@unknown_users, $user) unless exists $known_users{$user};
-    }
-    abort "Unknown user(s): " . join(', ', @unknown_users) if @unknown_users;
-
     my $lockdir = lock_dir $repo;
-    foreach my $user (keys %users) {
+    foreach my $user (get_usernames(@_)) {
         my $openfile = File::Spec->catfile($lockdir, $user);
         unless (-e $openfile) {
+            print "Opening gate \"$repo\" for $user\n";
             open(my $fh, '>', $openfile) or die "Failed to create file: $openfile";
             close $fh;
             log_action('OPEN', $repo, $user);
@@ -314,14 +307,14 @@ sub open_gate {
 
 sub close_gate {
     my $repo = shift;
-    my @users = @_;
-    abort "Usage: close <gate> <user> [<user>...]" unless $repo and @users;
+    abort "Usage: close <gate> <user> [<user>...]" unless $repo and @_;
     abort "Gate not locked: $repo" unless is_locked $repo;
 
     my $lockdir = lock_dir $repo;
-    foreach my $user (@users) {
+    foreach my $user (get_usernames(@_)) {
         my $openfile = File::Spec->catfile($lockdir, $user);
         next unless -e $openfile;
+        print "Closing gate \"$repo\" for $user\n";
         unless (-f $openfile and -z $openfile) {
             abort "Unable to close gate for user: $user\nNot an empty file: $openfile"
         }
@@ -330,24 +323,26 @@ sub close_gate {
     }
 }
 
+my %_users;
 sub users_and_roles {
-    my %users;
-    open(my $fh, $AUTHKEYSFILE) or die "Failed to open file: $AUTHKEYSFILE";
-    while (<$fh>) {
-        next unless /^\s*command="(.*?)"/;
-        my $command = $1;
-        unless ($command =~ /\Q$SCRIPTNAME\E/) {
-            debug "Ignoring line: $_";
-            next;
+    if (not %_users) {
+        open(my $fh, $AUTHKEYSFILE) or die "Failed to open file: $AUTHKEYSFILE";
+        while (<$fh>) {
+            next unless /^\s*command="(.*?)"/;
+            my $command = $1;
+            unless ($command =~ /\Q$SCRIPTNAME\E/) {
+                debug "Ignoring line: $_";
+                next;
+            }
+            my $user_role = (split(' ', $command))[1];
+            debug "Got user:role = $user_role";
+            my ($user, $role) = split(':', $user_role);
+            $_users{$user} = [] unless exists $_users{$user};
+            push(@{$_users{$user}}, $role);
         }
-        my $user_role = (split(' ', $command))[1];
-        debug "Got user:role = $user_role";
-        my ($user, $role) = split(':', $user_role);
-        $users{$user} = [] unless exists $users{$user};
-        push(@{$users{$user}}, $role);
-    }
-    close $fh;
-    return %users;
+        close $fh;
+    };
+    return %_users;
 }
 
 sub known_users {
@@ -355,8 +350,54 @@ sub known_users {
     return sort keys %users;
 }
 
+sub match_usernames {
+    my @patterns = @_;
+    my %known_users = users_and_roles;
+    my @sorted_names = sort keys %known_users;
+    my @users;
+    my @unknown;
+    my %ambiguous;
+    foreach my $pat (@patterns) {
+        if (exists $known_users{$pat}) {
+            push(@users, $pat);
+        } else {
+            my @matches = grep /\Q$pat\E/, @sorted_names;
+            if (not @matches) {
+                push(@unknown, $pat);
+            } elsif (@matches > 1) {
+                $ambiguous{$pat} = \@matches;
+            } else {
+                push(@users, $matches[0]);
+            }
+        }
+    }
+    return (\@users, \@unknown, \%ambiguous);
+}
+
+sub get_usernames {
+    my ($users, $unknown, $ambiguous) = match_usernames(@_);
+    if (@$unknown) {
+        abort "Unknown user(s): " . join(', ', @$unknown);
+    } elsif (%$ambiguous) {
+        my $err;
+        foreach my $pat (keys %$ambiguous) {
+            $err .= "\n\t$pat: matches " . join(', ', @{ $ambiguous->{$pat} });
+        }
+        abort "Ambiguous username(s): $err";
+    }
+    return @$users;
+}
+
 sub list_users {
+    my $pat = shift;
     my %users = users_and_roles;
+    if ($pat) {
+        foreach (keys %users) {
+            delete $users{$_} unless /\Q$pat\E/;
+        }
+    }
+    die "No users found matching pattern '$pat'\n" if not %users;
+
     my $fmt = "%-30s  %5s  %s\n";
     print "\n";
     printf($fmt, 'USER', 'ADMIN', 'ROLES');
@@ -463,7 +504,7 @@ ADMIN COMMANDS:
 - gates
   List available gates (repos).
 
-- users
+- users [part-of-username]
   List known users.
 
 - adduser <user> <role>[,<role>...] <public-key>
@@ -509,7 +550,8 @@ sub admin_command {
         print join("\n", repo_list), "\n";
         exit 0;
     } elsif ($cmd eq 'users') {
-        list_users;
+        my $pat = $repo;
+        list_users($pat);
         exit 0;
     } elsif ($cmd eq 'adduser') {
         my $user = $repo;
