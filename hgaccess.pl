@@ -2,6 +2,7 @@
 use strict;
 use warnings;
 
+use Cwd;
 use File::Basename;
 use File::Copy;
 use File::Spec;
@@ -591,7 +592,13 @@ sub admin_command {
 # Main
 
 if (@ARGV < 1) {
-    abort "Access denied, read-only repository";
+    my $msg = "Access denied, read-only repository: ";
+
+    my $repo = basename getcwd;
+    my $lockdir = lock_dir($repo);
+    $msg = "Access denied, gate locked: " if -e $lockdir;
+
+    abort $msg . $repo;
 }
 
 my $conf = load_conf;
