@@ -544,6 +544,19 @@ sub admin_command {
     my $cmd = shift @cmd;
     my $repo = shift @cmd;
 
+    my $disable_file = File::Spec->catfile($ENV{HOME}, "hgaccess.$cmd.disable");
+    if (-f $disable_file) {
+        if (open(my $fh, $disable_file)) {
+            while (<$fh>) {
+                print;
+            }
+            close $fh;
+        } else {
+            print "Access to the $cmd command disabled by admin.\n";
+        }
+	exit 0;
+    }
+
     if ($cmd eq 'help') {
         admin_help;
         exit 0;

@@ -81,6 +81,16 @@ Admin Commands
     
     NOTE: If no command is specified, the admin user is dropped into a shell.
 
+Disabling Admin Commands
+=======================
+
+To disable any admin command, create a file in the home directory of the SSH
+user with the name `hgaccess.<cmd>.disable`.  For instance, to disable the
+"adduser" command, create a file named `hgaccess.adduser.disable`.
+
+The contents of this file will be used as the error message when an attempt is
+made to execute this command.
+
 Logging and Debugging
 =====================
 
