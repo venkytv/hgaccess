@@ -156,7 +156,7 @@ sub actions_for {
     $actions{$_} = 0 foreach (qw( read write ));
 
     if (not exists $conf->{$role}) {
-        $msg = "Unknown role: $role";
+        debug "Unknown role: $role";
     } elsif (not is_repo $repo) {
         $msg = "Unknown repo: $repo";
     } else {
