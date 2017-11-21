@@ -21,6 +21,7 @@ my $SCRIPTNAME = basename $0;
 
 my $DEBUGLOG = File::Spec->catfile($ENV{HOME}, '.hgaccess.debug.log');
 my $ACTIONLOG = File::Spec->catfile($ENV{HOME}, '.hgactions.log');
+my $GLOBALLOCK = -e File::Spec->catfile($ENV{HOME}, 'REPOS.LOCKED');
 
 # Subroutines
 
@@ -209,7 +210,7 @@ sub cmd_for {
     push(@cmd, (
             '--config', "hooks.prechangegroup.hgaccess='$0'",
             '--config', "hooks.prepushkey.hgaccess='$0'",
-    )) unless $actions{write};
+    )) unless $actions{write} and not $GLOBALLOCK;
 
     #use Data::Dumper; debug(Dumper($actions));
     return (\@cmd, $msg);
